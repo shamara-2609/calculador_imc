@@ -29,14 +29,21 @@ class _CalculadoraIMCState extends State<CalculadoraIMC> {
   final TextEditingController pesoController = TextEditingController();
   final TextEditingController alturaController = TextEditingController();
 
+  double peso = 0;
+  double altura = 0;
   String resultado = '';
 
   void calcularIMC() {
-    double peso = double.tryParse(pesoController.text) ?? 0;
-    double altura = double.tryParse(alturaController.text) ?? 0;
-
     if (peso <= 0 || altura <= 0) {
       setState(() => resultado = 'Por favor, insira valores válidos.');
+      return;
+    }
+
+    // Impede o cálculo se a altura for maior que 2.5 m
+    if (!_validarAlturaMaxima(altura)) {
+      setState(() {
+        resultado = 'Altura inválida. Corrija antes de calcular.';
+      });
       return;
     }
 
@@ -63,6 +70,36 @@ class _CalculadoraIMCState extends State<CalculadoraIMC> {
     });
   }
 
+  double _converterAltura(String valor) {
+    valor = valor.trim().replaceAll(',', '.');
+    if (valor.isEmpty) return 0;
+
+    double? altura = double.tryParse(valor);
+    if (altura == null) return 0;
+
+    // Se o usuário digitar em centímetros (ex: 175), converte para metros (1.75)
+    if (altura > 10) {
+      altura = altura / 100;
+    }
+
+    return altura;
+  }
+
+  // Retorna false se a altura for inválida (> 2.5), true se estiver ok
+  bool _validarAlturaMaxima(double altura) {
+    if (altura > 2.5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Altura máxima permitida é 2.50 metros'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return false; // bloqueia o cálculo
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,6 +116,11 @@ class _CalculadoraIMCState extends State<CalculadoraIMC> {
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
+              onChanged: (valor) {
+                setState(() {
+                  peso = double.tryParse(valor.replaceAll(',', '.')) ?? 0;
+                });
+              },
             ),
             const SizedBox(height: 16),
             TextField(
@@ -88,6 +130,11 @@ class _CalculadoraIMCState extends State<CalculadoraIMC> {
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
+              onChanged: (valor) {
+                setState(() {
+                  altura = _converterAltura(valor);
+                });
+              },
             ),
             const SizedBox(height: 20),
             ElevatedButton(
